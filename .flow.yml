@@ -1,0 +1,13 @@
+---
+default:
+        cmd: | #!/usr/bin/env bash
+
+
+                clear
+
+                cd ~/code/twilio-remake/
+
+                go build  -o /tmp/twilio-remake .
+                /tmp/twilio-remake
+
+
