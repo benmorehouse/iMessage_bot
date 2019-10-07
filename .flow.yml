@@ -8,5 +8,5 @@ default:
                 cd ~/repositories/iMessage_bot
 
                 go build
-                ./iMessage_bot -file=file.csv -message=sup NAME
+                ./iMessage_bot -file=file.csv -message="sup NAME"
 

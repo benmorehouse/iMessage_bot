@@ -64,17 +64,14 @@ func iMessage(){
 
 	wg.Add(len(contactList))
 	for i:=0;i<len(contactList);i++{
-		go func(string){
-			*message , err = contactList[i].CreateMessage(*message)
+		temp := contactList[i]
+		go func(string,int,contact){
+			*message , err = temp.CreateMessage(*message)
 			if err != nil{
 				log.Fatal("Entered message is empty")
 			}
-			contactList[i].SendMessage(&wg,*message)
-		}(*message)
-
-		if err != nil{
-			log.Fatal("Unable to send message to",contactList[i].Name)
-		}
+			temp.SendMessage(&wg,*message)
+		}(*message, i,temp)
 	}
 	wg.Wait()
 }
@@ -92,14 +89,13 @@ func (this *contact) Init(wg *sync.WaitGroup, input []string){
 func (this *contact) SendMessage(wg *sync.WaitGroup, message string){
 //osascript sendMessage.applescript 1235551234 "Hello there!"
 	defer wg.Done()
-	output := "osascript sendMessage.applescipt "
-	output += this.Name + string(" ")
+	output := "/usr/bin/osascript '/Users/benmorehouse/repositories/iMessage_bot/sendMessage.applescript'"
+	output += this.Number + string(" ")
 	output += message
-
+	fmt.Println(output)
 	cmd := exec.Command(output)
-	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
+	fmt.Println(cmd.CombinedOutput())
 	cmd.Run()
 }
 
@@ -110,6 +106,7 @@ func (this contact) CreateMessage(input string)(string, error){
 	}
 
 	messageField := strings.Fields(input)
+
 	for i , val := range messageField{
 		if val == "NAME"{
 			messageField[i] = this.Name
