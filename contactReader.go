@@ -1,69 +1,121 @@
 package main
 
-import (
+import(
 	"fmt"
-	"bufio"
+	"encoding/csv"
+	"log"
 	"os"
-	"flag"
+	"sync"
+	"bufio"
 	"strings"
+	"errors"
+	"os/exec"
+	"flag"
 )
 
-type orientee struct{
-	name string
-	number string
+type contact struct{
+	Name string
+	Number string
 }
 
-func scan_Phone(input string)string{
-	var output string
-	for _,val := range input{
-		if val == '(' || val == ')' || val =='-'{
-			continue
-		}else{
-			output += string(val)
-		}
-	}
-	return output
-}
-
-func infoReader()[]orientee{
-	/*
-	This program will take in the structure of student's first names and their numbers and send them an automated message
-	*/
-	var contacts []orientee
-	fmt.Print()
-	// this array is gonna be appended with orientation contact information
-	fileptr := flag.String("ContactFileScanner","information.txt","File scanner for the contact information")
+func iMessage(){
+	csv_filename := flag.String("file","", "csv data file for contacts and their names")
+	message := flag.String("message","","message that will be sent to all participants")
 	flag.Parse()
-	file,err := os.Open(*fileptr)
+
+	if *csv_filename == ""{
+		log.Fatal("You have not passed in a csv file")
+	}
+
+	wg := sync.WaitGroup{}
+
+	file, err := os.Open(*csv_filename)
+
 	if err != nil{
-		os.Exit(1)
+		log.Fatal("Not able to open the inputted CSV file")
 	}
-	s := bufio.NewScanner(file)
-	var phone_number string
-	// go through and get the phone number and the first name
-	for s.Scan(){
-		temp := strings.Fields(s.Text())
-		marker := false // when marker is true it is time to read phone number and break the loop
-		for _, val :=range temp{
-			if marker == true{
-				phone_number = scan_Phone(val)
-				break
+
+	file_reader := csv.NewReader(file) // file is io.reader that reads file
+
+	data , err := file_reader.Read()
+	var contactList []contact
+	for err == nil{
+		wg.Add(1)
+		var temp contact
+		go func(data []string){
+			temp.Init(&wg,data)
+			if temp.Name == ""{
+				return
+			}else{
+				contactList = append(contactList, temp) // initializes all the contacts
 			}
-			for i:=0;i<len(val)-2;i++{
-				// inner loop to loop through each character to find .edu
-				if val[i]=='e'{
-					if val[i+1]=='d' && val[i+2]=='u'{
-						marker = true
-					}
-				}
-			}
-		}
-		contactsTemp := orientee{
-			number: phone_number,
-			name: temp[2],
-		}
-		contacts = append(contacts,contactsTemp)
+		}(data)
+		data , err = file_reader.Read()
 	}
-	return contacts
+	wg.Wait()
+
+	if *message == ""{
+		fmt.Println("Please enter in a message to send to all users")
+		fmt.Println("To enter in their name, type \"NAME\" with spaces on both sides")
+		fmt.Println("Press ENTER when finished")
+		reader := bufio.NewReader(os.Stdin)
+		*message , err = reader.ReadString('\n')
+	}
+
+	wg.Add(len(contactList))
+	for i:=0;i<len(contactList);i++{
+		go func(string){
+			*message , err = contactList[i].CreateMessage(*message)
+			if err != nil{
+				log.Fatal("Entered message is empty")
+			}
+			contactList[i].SendMessage(&wg,*message)
+		}(*message)
+
+		if err != nil{
+			log.Fatal("Unable to send message to",contactList[i].Name)
+		}
+	}
+	wg.Wait()
+}
+
+func (this *contact) Init(wg *sync.WaitGroup, input []string){
+	defer wg.Done()
+	if len(input) < 2{
+		return
+	}
+
+	this.Name = input[0]
+	this.Number = input[1]
+}
+
+func (this *contact) SendMessage(wg *sync.WaitGroup, message string){
+//osascript sendMessage.applescript 1235551234 "Hello there!"
+	defer wg.Done()
+	output := "osascript sendMessage.applescipt "
+	output += this.Name + string(" ")
+	output += message
+
+	cmd := exec.Command(output)
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
+func (this contact) CreateMessage(input string)(string, error){
+	if input == ""{
+		err := errors.New("Error: message is empty")
+		return input, err
+	}
+
+	messageField := strings.Fields(input)
+	for i , val := range messageField{
+		if val == "NAME"{
+			messageField[i] = this.Name
+		}
+	}
+
+	return strings.Join(messageField,string(" ")),nil
 }
 

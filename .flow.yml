@@ -5,9 +5,8 @@ default:
 
                 clear
 
-                cd ~/code/twilio-remake/
+                cd ~/repositories/iMessage_bot
 
-                go build  -o /tmp/twilio-remake .
-                /tmp/twilio-remake
-
+                go build
+                ./iMessage_bot -file=file.csv -message=sup NAME
 
