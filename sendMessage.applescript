@@ -1,4 +1,4 @@
-on run {targetBuddyPhone, targetMessage}
+son run {targetBuddyPhone, targetMessage}
     tell application "Messages"
         set targetService to 1st service whose service type = iMessage
         set targetBuddy to buddy targetBuddyPhone of targetService
